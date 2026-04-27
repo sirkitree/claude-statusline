@@ -33,6 +33,7 @@
     "green": "\\033[38;5;194m",
     "purple": "\\033[35m",
     "cyan": "\\033[96m",
+    "yellow": "\\033[33m",
     "reset": "\\033[0m",
     "comment": "ANSI color codes for statusline elements - customize to your preference"
   },
@@ -57,12 +58,13 @@
   "sections": {
     "show_directory": true,
     "show_model": true,
+    "show_effort": true,
     "show_git_branch": true,
     "show_context": true,
     "show_cost": true,
     "show_weekly": true,
     "show_timer": true,
     "show_sessions": true,
-    "comment": "Toggle visibility of statusline sections - set to false to hide any section"
+    "comment": "Toggle visibility of statusline sections - set to false to hide any section. show_effort displays the current /effort level (lo/md/hi/xh/mx) and is hidden automatically when the model does not expose an effort field."
   }
 }

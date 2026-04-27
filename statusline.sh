@@ -48,6 +48,7 @@ if [ -f "$CONFIG_FILE" ]; then
     # Section toggles
     SHOW_DIRECTORY=$(echo "$CONFIG" | jq -r '.sections.show_directory // true')
     SHOW_MODEL=$(echo "$CONFIG" | jq -r '.sections.show_model // true')
+    SHOW_EFFORT=$(echo "$CONFIG" | jq -r '.sections.show_effort // true')
     SHOW_GIT_BRANCH=$(echo "$CONFIG" | jq -r '.sections.show_git_branch // true')
     SHOW_CONTEXT=$(echo "$CONFIG" | jq -r '.sections.show_context // true')
     SHOW_COST=$(echo "$CONFIG" | jq -r '.sections.show_cost // true')
@@ -62,6 +63,7 @@ if [ -f "$CONFIG_FILE" ]; then
     GREEN_CODE=$(echo "$CONFIG" | jq -r '.colors.green // "\\033[38;5;194m"' | sed 's/\\\\/\\/g')
     PURPLE_CODE=$(echo "$CONFIG" | jq -r '.colors.purple // "\\033[35m"' | sed 's/\\\\/\\/g')
     CYAN_CODE=$(echo "$CONFIG" | jq -r '.colors.cyan // "\\033[96m"' | sed 's/\\\\/\\/g')
+    YELLOW_CODE=$(echo "$CONFIG" | jq -r '.colors.yellow // "\\033[33m"' | sed 's/\\\\/\\/g')
     RESET_CODE=$(echo "$CONFIG" | jq -r '.colors.reset // "\\033[0m"' | sed 's/\\\\/\\/g')
 else
     # Default configuration (fallback if config file doesn't exist)
@@ -87,6 +89,7 @@ else
     # Default section toggles
     SHOW_DIRECTORY=true
     SHOW_MODEL=true
+    SHOW_EFFORT=true
     SHOW_GIT_BRANCH=true
     SHOW_CONTEXT=true
     SHOW_COST=true
@@ -100,6 +103,7 @@ else
     GREEN_CODE='\033[38;5;194m'
     PURPLE_CODE='\033[35m'
     CYAN_CODE='\033[96m'
+    YELLOW_CODE='\033[33m'
     RESET_CODE='\033[0m'
 fi
 
@@ -132,6 +136,19 @@ _abbreviate_model() {
     fi
 
     echo "${_prefix}${_ver}${_suffix}"
+}
+
+# Abbreviate /effort level: low→lo, medium→md, high→hi, xhigh→xh, max→mx.
+# Empty input (model doesn't expose effort) returns empty.
+_abbreviate_effort() {
+    case "$1" in
+        low)    echo "lo" ;;
+        medium) echo "md" ;;
+        high)   echo "hi" ;;
+        xhigh)  echo "xh" ;;
+        max)    echo "mx" ;;
+        *)      echo "" ;;
+    esac
 }
 
 # Basic statusline when ccusage has no active block
@@ -179,10 +196,16 @@ _show_basic_statusline() {
     for ((i=_ctx_filled; i<BAR_LENGTH; i++)); do _ctx_bar="${_ctx_bar}░"; done
     _ctx_bar="${_ctx_bar}]"
 
+    # /effort level (only present on models that support it)
+    local _effort_level _effort_abbr
+    _effort_level=$(echo "$_input" | jq -r '.effort.level // empty')
+    _effort_abbr=$(_abbreviate_effort "$_effort_level")
+
     # Build sections
     local _parts=()
     [[ "$SHOW_DIRECTORY" == "true" ]] && _parts+=("${ORANGE_CODE}${_dir}${RESET_CODE}")
     [[ "$SHOW_MODEL" == "true" && -n "$_model" ]] && _parts+=("${CYAN_CODE}${_model_abbr}${RESET_CODE}")
+    [[ "$SHOW_EFFORT" == "true" && -n "$_effort_abbr" ]] && _parts+=("${YELLOW_CODE}${_effort_abbr}${RESET_CODE}")
     [[ "$SHOW_GIT_BRANCH" == "true" && -n "$_branch" ]] && _parts+=("${GREEN_CODE}${_branch}${RESET_CODE}")
     [[ "$SHOW_CONTEXT" == "true" ]] && _parts+=("${PINK_CODE}${_ctx_actual_k}k/${_ctx_window_k}k ${_ctx_bar}${RESET_CODE}")
 
@@ -218,6 +241,8 @@ DIR_NAME="${CURRENT_DIR##*/}"
 DIR_NAME=$(printf '%s' "$DIR_NAME" | tr -d '\000-\037\177')
 TRANSCRIPT_PATH=$(echo "$input" | jq -r '.transcript_path // ""')
 MODEL_NAME=$(echo "$input" | jq -r '.model.display_name // ""')
+EFFORT_LEVEL=$(echo "$input" | jq -r '.effort.level // empty')
+EFFORT_ABBR=$(_abbreviate_effort "$EFFORT_LEVEL")
 
 # Get 5-hour window data from ccusage
 # Use --offline for faster execution with cached pricing
@@ -569,6 +594,7 @@ if [ -n "$WINDOW_DATA" ] && [ "$WINDOW_DATA" != "null" ]; then
 
         [[ "$SHOW_DIRECTORY" == "true" ]] && STATUSLINE_SECTIONS+=("${ORANGE_CODE}${DIR_NAME}${RESET_CODE}")
         [[ "$SHOW_MODEL" == "true" && -n "$MODEL_NAME" ]] && STATUSLINE_SECTIONS+=("${CYAN_CODE}${MODEL_ABBR}${RESET_CODE}")
+        [[ "$SHOW_EFFORT" == "true" && -n "$EFFORT_ABBR" ]] && STATUSLINE_SECTIONS+=("${YELLOW_CODE}${EFFORT_ABBR}${RESET_CODE}")
         [[ "$SHOW_GIT_BRANCH" == "true" && -n "$GIT_BRANCH" ]] && STATUSLINE_SECTIONS+=("${GREEN_CODE}${GIT_BRANCH}${RESET_CODE}")
         [[ "$SHOW_CONTEXT" == "true" ]] && STATUSLINE_SECTIONS+=("${PINK_CODE}${CTX_TOTAL} ${CTX_PROGRESS_BAR}${RESET_CODE}")
         [[ "$SHOW_COST" == "true" ]] && STATUSLINE_SECTIONS+=("${PROGRESS_COLOR}${COST_FMT} ${PROGRESS_BAR} ${COST_PERCENTAGE}%${RESET_CODE}")
