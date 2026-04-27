@@ -199,6 +199,9 @@ _show_basic_statusline() {
     # /effort level (only present on models that support it)
     local _effort_level _effort_abbr
     _effort_level=$(echo "$_input" | jq -r '.effort.level // empty')
+    if [ -z "$_effort_level" ] && [ -f "$HOME/.claude/settings.json" ]; then
+        _effort_level=$(jq -r '.effortLevel // empty' "$HOME/.claude/settings.json" 2>/dev/null)
+    fi
     _effort_abbr=$(_abbreviate_effort "$_effort_level")
 
     # Build sections
@@ -242,6 +245,9 @@ DIR_NAME=$(printf '%s' "$DIR_NAME" | tr -d '\000-\037\177')
 TRANSCRIPT_PATH=$(echo "$input" | jq -r '.transcript_path // ""')
 MODEL_NAME=$(echo "$input" | jq -r '.model.display_name // ""')
 EFFORT_LEVEL=$(echo "$input" | jq -r '.effort.level // empty')
+if [ -z "$EFFORT_LEVEL" ] && [ -f "$HOME/.claude/settings.json" ]; then
+    EFFORT_LEVEL=$(jq -r '.effortLevel // empty' "$HOME/.claude/settings.json" 2>/dev/null)
+fi
 EFFORT_ABBR=$(_abbreviate_effort "$EFFORT_LEVEL")
 
 # Get 5-hour window data from ccusage
